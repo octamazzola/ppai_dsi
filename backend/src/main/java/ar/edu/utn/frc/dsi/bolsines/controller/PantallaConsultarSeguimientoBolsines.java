@@ -7,16 +7,16 @@ import ar.edu.utn.frc.dsi.bolsines.dto.IniciarConsultaResponse;
 import ar.edu.utn.frc.dsi.bolsines.dto.NotificacionResultadoResponse;
 import ar.edu.utn.frc.dsi.bolsines.dto.SeleccionBolsinRequest;
 import ar.edu.utn.frc.dsi.bolsines.dto.SeleccionBolsinResponse;
-import ar.edu.utn.frc.dsi.bolsines.dto.SesionDisponibleResponse;
+import ar.edu.utn.frc.dsi.bolsines.controller.SesionController.UsuarioAutenticado;
 import ar.edu.utn.frc.dsi.bolsines.service.GestorConsultarSeguimientoBolsines;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -29,24 +29,24 @@ public class PantallaConsultarSeguimientoBolsines {
         this.gestorConsultarSeguimientoBolsines = gestorConsultarSeguimientoBolsines;
     }
 
-    @GetMapping("/sesiones")
-    public ResponseEntity<List<SesionDisponibleResponse>> listarSesiones() {
-        return ResponseEntity.ok(gestorConsultarSeguimientoBolsines.listarSesionesDemo());
+    @ModelAttribute("usuarioAutenticado")
+    public UsuarioAutenticado requerirUsuario(HttpServletRequest request) {
+        return SesionController.requerirUsuario(request);
     }
 
     // Paso 1: EB selecciona la opcion Consultar seguimiento de bolsines
     @PostMapping("/iniciar")
     public ResponseEntity<IniciarConsultaResponse> opcionConsultarUbicacion(
-            @RequestBody(required = false) IniciarConsultaRequest request) {
+            @RequestBody(required = false) IniciarConsultaRequest request,
+            @ModelAttribute(value = "usuarioAutenticado", binding = false) UsuarioAutenticado usuario) {
         String modeloGPS = request != null ? request.getModeloGPS() : null;
-        String nombreUsuario = request != null ? request.getNombreUsuario() : null;
-        IniciarConsultaResponse respuesta = habilitarPantalla(modeloGPS, nombreUsuario);
+        IniciarConsultaResponse respuesta = habilitarPantalla(modeloGPS, usuario.empleadoId());
         return ResponseEntity.ok(respuesta);
     }
 
     // Mantiene consistencia con el diagrama de secuencia (igual que PantAdmLaboreos.habilitarVentana())
-    private IniciarConsultaResponse habilitarPantalla(String modeloGPS, String nombreUsuario) {
-        return gestorConsultarSeguimientoBolsines.consultarUbicacion(modeloGPS, nombreUsuario);
+    private IniciarConsultaResponse habilitarPantalla(String modeloGPS, Long empleadoId) {
+        return gestorConsultarSeguimientoBolsines.consultarUbicacion(modeloGPS, empleadoId);
     }
 
     // Paso 6: Filtrar por numero de precinto o CM destino (Flujo Alternativo A2)

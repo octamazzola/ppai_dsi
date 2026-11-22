@@ -31,8 +31,8 @@ INSERT INTO rol (id, nombre, descripcion) VALUES (1, 'EB', 'Encargado de Bolsine
 INSERT INTO rol (id, nombre, descripcion) VALUES (2, 'GCM', 'Gerente de Comisión Médica');
 
 -- Usuarios
-INSERT INTO usuario (nombre_usuario, password) VALUES ('eb_cba', '1234');
-INSERT INTO usuario (nombre_usuario, password) VALUES ('eb_ros', '1234');
+INSERT INTO usuario (nombre_usuario, password) VALUES ('usuario1', 'usu123');
+INSERT INTO usuario (nombre_usuario, password) VALUES ('usuario2', '1234');
 INSERT INTO usuario (nombre_usuario, password) VALUES ('eb_mdz', '1234');
 INSERT INTO usuario (nombre_usuario, password) VALUES ('eb_juj', '1234');
 INSERT INTO usuario (nombre_usuario, password) VALUES ('gcm_cba', '1234');
@@ -42,9 +42,9 @@ INSERT INTO usuario (nombre_usuario, password) VALUES ('gcm_ba', '1234');
 
 -- Empleados (EBs de distintas CM y un GCM por cada CM destino)
 INSERT INTO empleado (id, nombre, apellido, email, rol_id, comision_medica_codigo, nombre_usuario)
-VALUES (1, 'Octavio', 'Mazzola', 'octavio.mazzola@organismo.gob.ar', 1, 'CM-CBA-01', 'eb_cba');
+VALUES (1, 'Octavio', 'Mazzola', 'octavio.mazzola@organismo.gob.ar', 1, 'CM-CBA-01', 'usuario1');
 INSERT INTO empleado (id, nombre, apellido, email, rol_id, comision_medica_codigo, nombre_usuario)
-VALUES (2, 'Rocío', 'Bruno', 'rocio.bruno@organismo.gob.ar', 1, 'CM-ROS-02', 'eb_ros');
+VALUES (2, 'Rocío', 'Bruno', 'rocio.bruno@organismo.gob.ar', 1, 'CM-ROS-02', 'usuario2');
 INSERT INTO empleado (id, nombre, apellido, email, rol_id, comision_medica_codigo, nombre_usuario)
 VALUES (3, 'Alejandro', 'Medina', 'alejandro.medina@organismo.gob.ar', 1, 'CM-MDZ-03', 'eb_mdz');
 INSERT INTO empleado (id, nombre, apellido, email, rol_id, comision_medica_codigo, nombre_usuario)
@@ -60,11 +60,11 @@ VALUES (12, 'Martín', 'Pérez', 'gcm.mendoza03@organismo.gob.ar', 2, 'CM-MDZ-03
 INSERT INTO empleado (id, nombre, apellido, email, rol_id, comision_medica_codigo, nombre_usuario)
 VALUES (13, 'Sofía', 'Fernández', 'gcm.central@organismo.gob.ar', 2, 'CM-BA-01', 'gcm_ba');
 
--- Sesion actual por defecto: eb_cba (CM-CBA-01)
+-- Sesion actual por defecto: usuario1 (CM-CBA-01)
 INSERT INTO sesion (id, fecha_hora_inicio, fecha_hora_fin, nombre_usuario)
-VALUES (1, '2026-11-22T08:00:00', NULL, 'eb_cba');
+VALUES (1, '2026-11-22T08:00:00', NULL, 'usuario1');
 INSERT INTO sesion (id, fecha_hora_inicio, fecha_hora_fin, nombre_usuario)
-VALUES (2, '2026-11-21T08:00:00', '2026-11-21T18:00:00', 'eb_ros');
+VALUES (2, '2026-11-21T08:00:00', '2026-11-21T18:00:00', 'usuario2');
 
 -- Estados (respetando Maquina de Estados de Bolsin de Entrega 1 + 1 estado de otro ambito)
 INSERT INTO estado (id, ambito, nombre, descripcion) VALUES (1, 'Bolsin', 'Creado', 'Bolsín recién generado en CM origen');
@@ -91,7 +91,7 @@ VALUES (120, '2026-03-07', 'PRE-120', 1100.0, 'CM-CBA-01', 'CM-BA-01');
 INSERT INTO bolsin (numero_bolsin, fecha, numero_precinto, peso, cm_origen_codigo, cm_destino_codigo)
 VALUES (121, '2026-03-05', 'PRE-121', 850.0, 'CM-CBA-01', 'CM-ROS-02');
 
--- 102: CM-ROS-02 -> CM-MDZ-03 | Enviado (NO aparece para eb_cba, SI para eb_ros; OK en API GPS)
+-- 102: CM-ROS-02 -> CM-MDZ-03 | Enviado (NO aparece para usuario1, SI para usuario2; OK en API GPS)
 INSERT INTO bolsin (numero_bolsin, fecha, numero_precinto, peso, cm_origen_codigo, cm_destino_codigo)
 VALUES (102, '2026-03-07', 'PRE-102', 1600.0, 'CM-ROS-02', 'CM-MDZ-03');
 

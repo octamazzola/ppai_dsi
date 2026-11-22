@@ -53,7 +53,7 @@ El sistema está organizado en **3 aplicaciones independientes** que corren en p
 ### 1. Mapeo BCE (Boundary–Control–Entity) a API REST
 Siguiendo el ejemplo oficial de la cátedra (*Administración de Campos — Implementación de un Caso de Uso*):
 - **`<<boundary>>`**: `PantallaConsultarSeguimientoBolsines` (`@RestController`) expone los endpoints REST `/api/seguimiento/*` y nunca recibe ni devuelve entidades de dominio directamente (utiliza **DTOs**).
-- **`<<control>>`**: `GestorConsultarSeguimientoBolsines` (`@Service`) orquesta el flujo del CU 36 y conserva el estado temporal de la consulta activa.
+- **`<<control>>`**: `GestorConsultarSeguimientoBolsines` orquesta el CU 36 y guarda la consulta activa por sesión HTTP. La comisión médica se obtiene del empleado autenticado.
 - **`<<entity>>`**: Las clases de `model/` implementan la lógica de negocio aplicando el **Patrón Experto en Información (GRASP)** y se persisten con JPA en H2.
 - **Eliminación de callbacks `Gestor → Pantalla`**: propios del modelo REST, los resultados se devuelven en el cuerpo JSON de cada respuesta HTTP.
 
@@ -101,7 +101,7 @@ Todos implementan `IAdaptadorGPSTracker` (`recibirUbicacionBolsin()`, `solicitar
 │       │   │   └── data.sql          # Datos semilla sincronizados con gps-tracker-api
 │       │   └── java/ar/edu/utn/frc/dsi/bolsines/
 │       │       ├── BolsinesApplication.java
-│       │       ├── config/           # CorsConfig, GpsApiConfig
+│       │       ├── config/           # GpsApiConfig
 │       │       ├── controller/       # PantallaConsultarSeguimientoBolsines
 │       │       ├── service/          # GestorConsultarSeguimientoBolsines
 │       │       ├── boundary/         # InterfazGPSTracker, IGoogleMaps
@@ -150,7 +150,6 @@ cd backend
 mvn spring-boot:run
 ```
 > API disponible en: `http://localhost:8081/api/seguimiento`  
-> Consola H2 disponible en: `http://localhost:8081/h2-console`
 
 ### Terminal 3 — Frontend mínimo en React + Vite (puerto `5173`)
 ```powershell
@@ -166,11 +165,7 @@ npm run dev
 
 El backend utiliza **H2 en memoria** con creación automática de esquema por JPA (`create-drop`) y precarga vía `backend/src/main/resources/data.sql`.
 
-### Acceso a la Consola H2
-- **URL**: `http://localhost:8081/h2-console`
-- **JDBC URL**: `jdbc:h2:mem:bolsinesdb`
-- **User Name**: `sa`
-- **Password**: *(vacía)*
+La consola web de H2 está deshabilitada para que el acceso a los bolsines pase por el backend.
 
 ### Datos precargados (`data.sql`)
 Los códigos de Comisiones Médicas y números de bolsín están **sincronizados con `gps-tracker-api`**:
@@ -181,15 +176,18 @@ Los códigos de Comisiones Médicas y números de bolsín están **sincronizados
 | `999` | `PRE-999` | `CM-CBA-01` | `CM-MDZ-03` | `Enviado` | **Flujo Alternativo A3** (no existe en `gps-tracker-api` → 404 controlado) |
 | `120` | `PRE-120` | `CM-CBA-01` | `CM-BA-01` | `Cerrado` | Control de filtro `Bolsin.sosEnviado()` (no se muestra) |
 | `121` | `PRE-121` | `CM-CBA-01` | `CM-ROS-02` | `Recibido` *(antes Enviado)* | Control de filtro `CambioEstadoBolsin.sosActual()` (no se muestra) |
-| `102` | `PRE-102` | `CM-ROS-02` | `CM-MDZ-03` | `Enviado` | Control de `esTuCMOrigen()` (visible solo para `eb_ros`) |
+| `102` | `PRE-102` | `CM-ROS-02` | `CM-MDZ-03` | `Enviado` | Control de `esTuCMOrigen()` (visible solo para `usuario2`) |
 | `103` | `PRE-103` | `CM-MDZ-03` | `CM-BA-01` | `Enviado` | Flujo limpio para sesión `eb_mdz` |
 | `110` | `PRE-110` | `CM-CBA-02` | `CM-ROS-02` | `Enviado` | Control de otra CM Córdoba |
 
-**Sesiones de Encargado de Bolsines (EB) disponibles desde el selector:**
-- `eb_cba` (`CM-CBA-01`): Flujo básico (`101`) + A3 (`999`) + filtros de estado.
-- `eb_ros` (`CM-ROS-02`): Flujo limpio (`102`) en los 3 modelos GPS.
-- `eb_mdz` (`CM-MDZ-03`): Flujo limpio (`103`) en los 3 modelos GPS.
-- `eb_juj` (`CM-JUJ-01`): Sin bolsines enviados → prueba directa de **Flujo Alternativo A1**.
+**Cuentas de demostración de Encargado de Bolsines (EB)**
+
+| Usuario | Contraseña | Comisión médica | Bolsines enviados |
+| --- | --- | --- | --- |
+| `usuario1` | `usu123` | `CM-CBA-01` | `101` y `999` (A3) |
+| `usuario2` | `1234` | `CM-ROS-02` | `102` |
+| `eb_mdz` | `1234` | `CM-MDZ-03` | `103` |
+| `eb_juj` | `1234` | `CM-JUJ-01` | Ninguno (A1) |
 
 ### Cómo agregar o quitar datos precargados (`data.sql`)
 
@@ -213,12 +211,16 @@ Base URL: `http://localhost:8081/api/seguimiento`
 
 | Método | Endpoint | Descripción |
 | :---: | :--- | :--- |
-| `GET` | `/sesiones` | Lista las sesiones demo disponibles para alternar el EB logueado. |
-| `POST` | `/iniciar` | Inicia el CU 36 (`{"modeloGPS":"XTR-4500L","nombreUsuario":"eb_cba"}`). Busca CM, bolsines enviados, consulta GPS vía Adapter y arma el mapa vía `IGoogleMaps`. |
+| `POST` | `/login` | Verifica `nombreUsuario` y `password` y crea una sesión HTTP. |
+| `GET` | `/sesion` | Devuelve el empleado y la comisión médica de la sesión actual. |
+| `POST` | `/logout` | Invalida la sesión HTTP. |
+| `POST` | `/iniciar` | Inicia el CU 36 (`{"modeloGPS":"XTR-4500L"}`) para la comisión médica del empleado autenticado. |
 | `POST` | `/filtrar` | Filtra por precinto y/o CM destino (`{"numeroPrecinto":"PRE-101","codigoCMDestino":""}`). Cubre Paso 6 y **A2**. |
 | `POST` | `/seleccionar-bolsin` | Selecciona un bolsín (`{"numeroBolsin":101}`). Devuelve confirmación para notificar al GCM destino o aviso **A3**. |
 | `POST` | `/confirmar-correo` | Confirma (`{"confirmar":true}`) ejecutando `<<include>>` **CU 31**, o rechaza (`{"confirmar":false}`) ejecutando **A5**. |
 | `POST` | `/cancelar` | Ejecuta **Flujo Alternativo A4** y finaliza limpiando el estado del gestor. |
+
+El frontend usa el proxy de Vite para enviar la cookie de sesión a la API. Si probás con Postman, conservá la cookie de `/login` para las operaciones de seguimiento.
 
 ---
 
@@ -227,16 +229,16 @@ Base URL: `http://localhost:8081/api/seguimiento`
 Con los 3 servicios levantados en `http://localhost:5173`:
 
 1. **Flujo Básico + Polimorfismo del Patrón Adapter**:
-   - Elegir `eb_cba` (`CM-CBA-01`), seleccionar **XTR-4500L** y presionar **Consultar seguimiento de bolsines**.
+   - Iniciar sesión como `usuario1` (`CM-CBA-01`), seleccionar **XTR-4500L** y presionar **Consultar seguimiento de bolsines**.
    - Observar en la columna *"Respuesta cruda API GPS"* el JSON de `XTR-4500L` normalizado a coordenadas `(-31.4201, -64.1888)` para el Bolsín `#101`.
    - Repetir seleccionando **NavTrack QX-7A** (recibe CSV texto plano `101,-31.4201,-64.1888,2026-03-07T12:30`) y **GeoPulse MTR-900** (recibe matriz JSON `[[101,...]]`): los 3 producen la misma salida uniforme.
    - Presionar **Seleccionar** en el Bolsín `#101` → en el diálogo modal presionar **Confirmar y enviar correo (CU 31)** → verificar el comprobante enviado a `gcm.rosario02@organismo.gob.ar` (GCM de la CM destino `CM-ROS-02`).
 2. **Flujo Alternativo A1 (No se encuentran bolsines en estado Enviado)**:
-   - Cambiar la sesión a `eb_juj` (`CM-JUJ-01`) y presionar **Consultar seguimiento de bolsines**.
+   - Cerrar sesión, ingresar como `eb_juj` (`CM-JUJ-01`) y presionar **Consultar seguimiento de bolsines**.
 3. **Flujo Alternativo A2 (No se encuentra bolsín con el número de precinto ingresado)**:
    - Con una consulta activa, escribir `PRE-000` en *Número de precinto* y presionar **Aplicar filtro**.
 4. **Flujo Alternativo A3 (El GPS Tracker no pudo informar ubicación del bolsín)**:
-   - Con sesión `eb_cba`, observar el aviso A3 sobre el Bolsín `#999` (404 desde `gps-tracker-api`) y presionar **Seleccionar** en `#999` para verificar el bloqueo controlado de la notificación.
+   - Con sesión `usuario1`, observar el aviso A3 sobre el Bolsín `#999` (404 desde `gps-tracker-api`) y presionar **Seleccionar** en `#999` para verificar el bloqueo controlado de la notificación.
 5. **Flujo Alternativo A4 (El EB cancela la ejecución del caso de uso)**:
    - Con una consulta activa, presionar **Cancelar CU (A4)**.
 6. **Flujo Alternativo A5 (El EB no envía correo electrónico)**:

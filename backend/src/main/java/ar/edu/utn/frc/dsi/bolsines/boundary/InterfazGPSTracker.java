@@ -15,10 +15,6 @@ public class InterfazGPSTracker {
     public static final String MODELO_GEOPULSE = "GeoPulse MTR-900";
 
     private final String[] apiKeyGPS;
-    private String[][] ubicacionBolsinAdaptada;
-    private int[] nroBolsines;
-    private String codCMOrigen;
-    private String[] codCMDestinos;
 
     public InterfazGPSTracker(GpsApiConfig gpsApiConfig) {
         this.apiKeyGPS = gpsApiConfig.getApiKeys();
@@ -27,16 +23,12 @@ public class InterfazGPSTracker {
     // Firma ampliada acordada (soporta los 3 proveedores GPS via polimorfismo con IAdaptadorGPSTracker)
     public String[][] obtenerUbicacionBolsin(int[] nroBolsines, String codCMOrigen,
                                              String[] codCMDestinos, String modeloGPS) {
-        this.nroBolsines = nroBolsines;
-        this.codCMOrigen = codCMOrigen;
-        this.codCMDestinos = codCMDestinos;
-
-        IAdaptadorGPSTracker adaptador = crearAdaptador(modeloGPS);
-        this.ubicacionBolsinAdaptada = adaptador.recibirUbicacionBolsin();
-        return this.ubicacionBolsinAdaptada;
+        IAdaptadorGPSTracker adaptador = crearAdaptador(nroBolsines, codCMOrigen, codCMDestinos, modeloGPS);
+        return adaptador.recibirUbicacionBolsin();
     }
 
-    private IAdaptadorGPSTracker crearAdaptador(String modeloGPS) {
+    private IAdaptadorGPSTracker crearAdaptador(int[] nroBolsines, String codCMOrigen,
+                                               String[] codCMDestinos, String modeloGPS) {
         String modelo = (modeloGPS == null || modeloGPS.isBlank()) ? MODELO_XTR : modeloGPS.trim();
         if (MODELO_NAVTRACK.equalsIgnoreCase(modelo) || "NAVTRACK".equalsIgnoreCase(modelo)) {
             return new AdaptadorGPSTrackerNavTrackQX7A(apiKeyGPS[1], nroBolsines, codCMDestinos);

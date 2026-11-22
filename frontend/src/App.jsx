@@ -16,10 +16,12 @@ import {
 import MapaBolsines from './components/MapaBolsines';
 import {
   cancelarCasoDeUso,
+  cerrarSesion,
   confirmarEnvioCorreo,
+  consultarSesion,
   filtrarBolsines,
   iniciarConsulta,
-  listarSesiones,
+  iniciarSesion,
   seleccionarBolsin
 } from './services/seguimientoService';
 
@@ -30,8 +32,80 @@ const MODELOS_GPS = [
 ];
 
 export default function App() {
-  const [sesiones, setSesiones] = useState([]);
-  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState('eb_cba');
+  const [usuario, setUsuario] = useState(null);
+  const [verificando, setVerificando] = useState(true);
+  const [autenticando, setAutenticando] = useState(false);
+  const [errorSesion, setErrorSesion] = useState('');
+
+  useEffect(() => {
+    let vigente = true;
+    function salirPorExpiracion() {
+      setUsuario(null);
+      setErrorSesion('La sesión expiró. Volvé a ingresar.');
+    }
+    window.addEventListener('sesion-expirada', salirPorExpiracion);
+    consultarSesion()
+      .then((sesion) => { if (vigente) setUsuario(sesion); })
+      .catch(() => { if (vigente) setErrorSesion('No se pudo conectar con el backend.'); })
+      .finally(() => { if (vigente) setVerificando(false); });
+    return () => {
+      vigente = false;
+      window.removeEventListener('sesion-expirada', salirPorExpiracion);
+    };
+  }, []);
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const datos = new FormData(event.currentTarget);
+    setAutenticando(true);
+    setErrorSesion('');
+    try {
+      setUsuario(await iniciarSesion(datos.get('nombreUsuario').trim(), datos.get('password')));
+    } catch (err) {
+      setErrorSesion(err.message);
+    } finally {
+      setAutenticando(false);
+    }
+  }
+
+  async function handleLogout() {
+    await cerrarSesion();
+    setUsuario(null);
+    setErrorSesion('');
+  }
+
+  if (usuario) {
+    return <Seguimiento key={usuario.nombreUsuario} usuario={usuario} onLogout={handleLogout} />;
+  }
+
+  return (
+    <main className="container login-container">
+      <section className="card" aria-labelledby="login-heading">
+        <div className="card-header">
+          <h1 id="login-heading">Ingresar al Sistema de Bolsines</h1>
+        </div>
+        {verificando ? <p role="status">Verificando sesión…</p> : (
+          <form className="stack" onSubmit={handleLogin}>
+            <div className="field">
+              <label htmlFor="login-usuario">Usuario</label>
+              <input id="login-usuario" name="nombreUsuario" type="text" autoComplete="username" required />
+            </div>
+            <div className="field">
+              <label htmlFor="login-password">Contraseña</label>
+              <input id="login-password" name="password" type="password" autoComplete="current-password" required />
+            </div>
+            {errorSesion && <p className="banner error" role="alert">{errorSesion}</p>}
+            <button type="submit" className="btn btn-primary" disabled={autenticando}>
+              {autenticando ? 'Ingresando…' : 'Iniciar sesión'}
+            </button>
+          </form>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function Seguimiento({ usuario, onLogout }) {
   const [modeloGPS, setModeloGPS] = useState('XTR-4500L');
 
   const [consulta, setConsulta] = useState(null);
@@ -46,16 +120,16 @@ export default function App() {
   const confirmDialogRef = useRef(null);
   const cancelDialogRef = useRef(null);
 
-  useEffect(() => {
-    listarSesiones()
-      .then((data) => {
-        setSesiones(data);
-        if (data.length > 0 && !data.some((s) => s.nombreUsuario === 'eb_cba')) {
-          setUsuarioSeleccionado(data[0].nombreUsuario);
-        }
-      })
-      .catch((err) => setError(`No se pudo conectar con el backend (puerto 8081): ${err.message}`));
-  }, []);
+  async function handleLogout() {
+    setCargando(true);
+    setError('');
+    try {
+      await onLogout();
+    } catch (err) {
+      setError(`No se pudo cerrar la sesión. ${err.message}`);
+      setCargando(false);
+    }
+  }
 
   useEffect(() => {
     const dialog = confirmDialogRef.current;
@@ -76,7 +150,7 @@ export default function App() {
     setFiltroDestino('');
     setCargando(true);
     try {
-      const data = await iniciarConsulta(modeloGPS, usuarioSeleccionado);
+      const data = await iniciarConsulta(modeloGPS);
       setConsulta(data);
     } catch (err) {
       setError(err.message);
@@ -201,17 +275,22 @@ export default function App() {
               <p>CU 36 — Consultar seguimiento de bolsines en tránsito</p>
             </div>
           </div>
-          {consulta && (
-            <button
-              type="button"
-              className="btn btn-danger-outline"
-              onClick={abrirConfirmacionCancelar}
-              disabled={cargando}
-            >
-              <XCircle size={16} aria-hidden="true" />
-              Cancelar CU (A4)
+          <div className="actions">
+            {consulta && (
+              <button
+                type="button"
+                className="btn btn-danger-outline"
+                onClick={abrirConfirmacionCancelar}
+                disabled={cargando}
+              >
+                <XCircle size={16} aria-hidden="true" />
+                Cancelar CU (A4)
+              </button>
+            )}
+            <button type="button" className="btn btn-secondary" disabled={cargando} onClick={handleLogout}>
+              Cerrar sesión
             </button>
-          )}
+          </div>
         </div>
       </header>
 
@@ -222,22 +301,8 @@ export default function App() {
             <span className="step-pill">Inicio CU 36</span>
           </div>
 
+          <p><strong>{usuario.nombreEmpleado}</strong> · {usuario.nombreCM} ({usuario.codigoCM})</p>
           <form onSubmit={handleIniciar} method="POST" aria-labelledby="inicio-heading" className="stack">
-            <div className="field">
-              <label htmlFor="sesion-usuario">Sesión activa (Encargado de Bolsines):</label>
-              <select
-                id="sesion-usuario"
-                name="nombreUsuario"
-                value={usuarioSeleccionado}
-                onChange={(e) => setUsuarioSeleccionado(e.target.value)}
-              >
-                {sesiones.map((s) => (
-                  <option key={s.nombreUsuario} value={s.nombreUsuario}>
-                    {s.nombreEmpleado} ({s.codigoCM} — {s.nombreCM}) · {s.descripcionDemo}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <fieldset className="radio-group">
               <legend>Modelo de GPS Tracker (Patrón Adapter):</legend>

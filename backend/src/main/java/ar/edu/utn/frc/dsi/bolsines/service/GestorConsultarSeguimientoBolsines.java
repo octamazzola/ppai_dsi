@@ -7,16 +7,13 @@ import ar.edu.utn.frc.dsi.bolsines.dto.IniciarConsultaResponse;
 import ar.edu.utn.frc.dsi.bolsines.dto.MapaPosicionesResponse;
 import ar.edu.utn.frc.dsi.bolsines.dto.NotificacionResultadoResponse;
 import ar.edu.utn.frc.dsi.bolsines.dto.SeleccionBolsinResponse;
-import ar.edu.utn.frc.dsi.bolsines.dto.SesionDisponibleResponse;
 import ar.edu.utn.frc.dsi.bolsines.model.Bolsin;
 import ar.edu.utn.frc.dsi.bolsines.model.ComisionMedica;
 import ar.edu.utn.frc.dsi.bolsines.model.Empleado;
-import ar.edu.utn.frc.dsi.bolsines.model.Sesion;
-import ar.edu.utn.frc.dsi.bolsines.model.Usuario;
 import ar.edu.utn.frc.dsi.bolsines.repository.IBolsinRepository;
 import ar.edu.utn.frc.dsi.bolsines.repository.IEmpleadoRepository;
-import ar.edu.utn.frc.dsi.bolsines.repository.ISesionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.annotation.SessionScope;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +21,9 @@ import java.util.Locale;
 import java.util.Objects;
 
 @Service
+@SessionScope
 public class GestorConsultarSeguimientoBolsines {
 
-    private final ISesionRepository sesionRepository;
     private final IEmpleadoRepository empleadoRepository;
     private final IBolsinRepository bolsinRepository;
     private final InterfazGPSTracker interfazGPSTracker;
@@ -46,54 +43,22 @@ public class GestorConsultarSeguimientoBolsines {
     private BolsinUbicacionResponse bolsinSeleccionadoDto;
     private String modeloGPSSeleccionado = InterfazGPSTracker.MODELO_XTR;
 
-    public GestorConsultarSeguimientoBolsines(ISesionRepository sesionRepository,
-            IEmpleadoRepository empleadoRepository,
+    public GestorConsultarSeguimientoBolsines(IEmpleadoRepository empleadoRepository,
             IBolsinRepository bolsinRepository,
             InterfazGPSTracker interfazGPSTracker,
             IGoogleMaps iGoogleMaps) {
-        this.sesionRepository = sesionRepository;
         this.empleadoRepository = empleadoRepository;
         this.bolsinRepository = bolsinRepository;
         this.interfazGPSTracker = interfazGPSTracker;
         this.iGoogleMaps = iGoogleMaps;
     }
 
-    public List<SesionDisponibleResponse> listarSesionesDemo() {
-        List<Empleado> empleados = empleadoRepository.findAll();
-        List<SesionDisponibleResponse> resultado = new ArrayList<>();
-        for (Empleado e : empleados) {
-            if (e.getUsuario() != null && !e.sosGCM()) {
-                String codCm = e.getCM().getCodigo();
-                String desc = switch (codCm) {
-                    case "CM-CBA-01" -> "Flujo básico (Bolsín 101 OK) + A3 (Bolsín 999 sin GPS) + filtros de estado";
-                    case "CM-ROS-02" -> "Flujo básico limpio (Bolsín 102 OK en los 3 proveedores GPS)";
-                    case "CM-MDZ-03" -> "Flujo básico limpio (Bolsín 103 OK en los 3 proveedores GPS)";
-                    case "CM-JUJ-01" -> "Flujo Alternativo A1 (0 bolsines en estado Enviado)";
-                    default -> "Encargado de Bolsines de " + codCm;
-                };
-                resultado.add(new SesionDisponibleResponse(
-                        e.getUsuario().getNombreUsuario(),
-                        e.getNombreCompleto(),
-                        codCm,
-                        e.mostrarCM(),
-                        desc));
-            }
-        }
-        return resultado;
-    }
-
     // Pasos 1 a 6 del CU 36
-    public IniciarConsultaResponse consultarUbicacion(String modeloGPS, String nombreUsuarioDemo) {
+    public synchronized IniciarConsultaResponse consultarUbicacion(String modeloGPS, Long empleadoId) {
+        finCU();
         this.modeloGPSSeleccionado = interfazGPSTracker.normalizarNombreModelo(modeloGPS);
-        this.bolsinSeleccionado = null;
-        this.bolsinSeleccionadoDto = null;
-
-        // 1. Buscar empleado logueado desde la Sesion actual (o usuario demo
-        // seleccionado)
-        this.empleadoLogueado = buscarEmpleadoLogueado(nombreUsuarioDemo);
-        if (this.empleadoLogueado == null) {
-            throw new IllegalStateException("No se encontró un empleado asociado a la sesión actual.");
-        }
+        this.empleadoLogueado = empleadoRepository.findById(empleadoId)
+                .orElseThrow(() -> new IllegalStateException("El empleado de la sesion ya no existe."));
 
         // 2. Buscar CM del empleado logueado
         this.cmEmpleadoLogueado = buscarCMEmpleadoLogueado();
@@ -165,7 +130,7 @@ public class GestorConsultarSeguimientoBolsines {
     }
 
     // Paso 6 (filtros por numero de precinto o CM destino) + Flujo Alternativo A2
-    public IniciarConsultaResponse filtrarBolsines(String numeroPrecinto, String codigoCMDestino) {
+    public synchronized IniciarConsultaResponse filtrarBolsines(String numeroPrecinto, String codigoCMDestino) {
         if (empleadoLogueado == null || cmEmpleadoLogueado == null) {
             throw new IllegalStateException("Primero debe iniciar la consulta de seguimiento de bolsines.");
         }
@@ -224,7 +189,7 @@ public class GestorConsultarSeguimientoBolsines {
     }
 
     // Pasos 7 y 8 del CU 36
-    public SeleccionBolsinResponse tomarSeleccionBolsinMapa(Integer numeroBolsin) {
+    public synchronized SeleccionBolsinResponse tomarSeleccionBolsinMapa(Integer numeroBolsin) {
         if (bolsinesEnviados.isEmpty()) {
             throw new IllegalStateException("No hay bolsines cargados en la consulta actual.");
         }
@@ -266,7 +231,7 @@ public class GestorConsultarSeguimientoBolsines {
     }
 
     // Pasos 9, 10 y 11 del CU 36 + Flujo Alternativo A5
-    public NotificacionResultadoResponse tomarConfirmacionEnviarCorreo(boolean confirmar) {
+    public synchronized NotificacionResultadoResponse tomarConfirmacionEnviarCorreo(boolean confirmar) {
         if (this.bolsinSeleccionado == null || this.bolsinSeleccionadoDto == null) {
             throw new IllegalStateException("Debe seleccionar un bolsín antes de confirmar el envío de correo.");
         }
@@ -318,7 +283,7 @@ public class GestorConsultarSeguimientoBolsines {
     }
 
     // Flujo Alternativo A4: El EB cancela la ejecucion del caso de uso
-    public NotificacionResultadoResponse cancelarCU() {
+    public synchronized NotificacionResultadoResponse cancelarCU() {
         finCU();
         return new NotificacionResultadoResponse(
                 false,
@@ -330,33 +295,6 @@ public class GestorConsultarSeguimientoBolsines {
 
     // ==================== Metodos internos fieles al Diagrama de Secuencia
     // ====================
-
-    private Empleado buscarEmpleadoLogueado(String nombreUsuarioDemo) {
-        List<Empleado> empleados = empleadoRepository.findAll();
-
-        if (nombreUsuarioDemo != null && !nombreUsuarioDemo.isBlank()) {
-            Usuario usuarioDemo = new Usuario(nombreUsuarioDemo.trim(), "");
-            return empleados.stream()
-                    .filter(e -> e.esTuUsuario(usuarioDemo))
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        Sesion sesionActual = sesionRepository.findAll().stream()
-                .filter(Sesion::esActual)
-                .findFirst()
-                .orElse(null);
-
-        if (sesionActual == null) {
-            return null;
-        }
-
-        Usuario usuarioLogueado = sesionActual.getUsuario();
-        return empleados.stream()
-                .filter(e -> e.esTuUsuario(usuarioLogueado))
-                .findFirst()
-                .orElse(null);
-    }
 
     private ComisionMedica buscarCMEmpleadoLogueado() {
         return this.empleadoLogueado.getCM();
@@ -455,6 +393,9 @@ public class GestorConsultarSeguimientoBolsines {
     }
 
     private void finCU() {
+        this.empleadoLogueado = null;
+        this.cmEmpleadoLogueado = null;
+        this.codCMOrigen = null;
         this.bolsinesEnviados = new ArrayList<>();
         this.nroBolsines = null;
         this.codCMDestinos = null;
