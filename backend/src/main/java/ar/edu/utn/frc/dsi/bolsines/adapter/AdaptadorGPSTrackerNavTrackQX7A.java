@@ -1,7 +1,6 @@
 package ar.edu.utn.frc.dsi.bolsines.adapter;
 
 import ar.edu.utn.frc.dsi.bolsines.external.ServicioGPSTrackerNavTrackQX7A;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -19,7 +18,7 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
     private final ObjectMapper objectMapper;
 
     public AdaptadorGPSTrackerNavTrackQX7A(String apiKey, int[] nroBolsines, String[] codCMDestinos,
-                                           ServicioGPSTrackerNavTrackQX7A servicio, ObjectMapper objectMapper) {
+            ServicioGPSTrackerNavTrackQX7A servicio, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.nroBolsines = nroBolsines;
         this.codCMDestinos = codCMDestinos;
@@ -44,9 +43,9 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
                 ubicacionRecibida[i] = servicio.retrieveTrackingData(apiKey, nroBolsines[i], codDestino);
             } catch (RestClientResponseException ex) {
                 ubicacionRecibida[i] = ERROR_PREFIX + "HTTP " + ex.getStatusCode().value()
-                        + " desde NavTrack QX-7A: " + extraerMensajeError(ex.getResponseBodyAsString());
+                        + ": " + ex.getResponseBodyAsString();
             } catch (RestClientException ex) {
-                ubicacionRecibida[i] = ERROR_PREFIX + "No se pudo conectar con NavTrack QX-7A (" + ex.getMessage() + ")";
+                ubicacionRecibida[i] = ERROR_PREFIX + "Sin conexión con el servicio NavTrack QX-7A";
             }
         }
     }
@@ -56,9 +55,11 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
         for (int i = 0; i < nroBolsines.length; i++) {
             String raw = ubicacionRecibida[i];
             if (raw == null || raw.startsWith(ERROR_PREFIX)) {
-                String msg = raw == null ? "Sin respuesta de NavTrack QX-7A" : raw.substring(ERROR_PREFIX.length());
+                String detalleCrudo = raw == null ? "Sin respuesta de NavTrack QX-7A" : raw.substring(ERROR_PREFIX.length());
                 ubicacionAdaptada[i] = new String[]{
-                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR", msg, raw == null ? "" : raw
+                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
+                        "El GPS Tracker (NavTrack QX-7A) no pudo localizar el bolsín.",
+                        detalleCrudo
                 };
                 continue;
             }
@@ -67,7 +68,8 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
             if (partes.length < 4) {
                 ubicacionAdaptada[i] = new String[]{
                         String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
-                        "Formato CSV inesperado de NavTrack QX-7A: " + raw, raw
+                        "El GPS Tracker (NavTrack QX-7A) no pudo localizar el bolsín.",
+                        raw
                 };
                 continue;
             }
@@ -81,19 +83,5 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
                     raw
             };
         }
-    }
-
-    private String extraerMensajeError(String body) {
-        if (body == null || body.isBlank()) {
-            return "El GPS Tracker no pudo informar ubicación del bolsín.";
-        }
-        try {
-            JsonNode node = objectMapper.readTree(body);
-            if (node.has("mensaje")) {
-                return node.get("mensaje").asText();
-            }
-        } catch (Exception ignored) {
-        }
-        return body;
     }
 }

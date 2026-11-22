@@ -43,9 +43,9 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
                 ubicacionRecibida[i] = servicio.getBolsinLocation(apiKey, nroBolsines[i], codCMOrigen);
             } catch (RestClientResponseException ex) {
                 ubicacionRecibida[i] = ERROR_PREFIX + "HTTP " + ex.getStatusCode().value()
-                        + " desde XTR-4500L: " + extraerMensajeError(ex.getResponseBodyAsString());
+                        + ": " + ex.getResponseBodyAsString();
             } catch (RestClientException ex) {
-                ubicacionRecibida[i] = ERROR_PREFIX + "No se pudo conectar con XTR-4500L (" + ex.getMessage() + ")";
+                ubicacionRecibida[i] = ERROR_PREFIX + "Sin conexión con el servicio XTR-4500L";
             }
         }
     }
@@ -55,9 +55,11 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
         for (int i = 0; i < nroBolsines.length; i++) {
             String raw = ubicacionRecibida[i];
             if (raw == null || raw.startsWith(ERROR_PREFIX)) {
-                String msg = raw == null ? "Sin respuesta de XTR-4500L" : raw.substring(ERROR_PREFIX.length());
+                String detalleCrudo = raw == null ? "Sin respuesta de XTR-4500L" : raw.substring(ERROR_PREFIX.length());
                 ubicacionAdaptada[i] = new String[]{
-                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR", msg, raw == null ? "" : raw
+                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
+                        "El GPS Tracker (XTR-4500L) no pudo localizar el bolsín.",
+                        detalleCrudo
                 };
                 continue;
             }
@@ -67,7 +69,9 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
                 JsonNode items = root.path("items");
                 if (!items.isArray() || items.isEmpty()) {
                     ubicacionAdaptada[i] = new String[]{
-                            String.valueOf(nroBolsines[i]), "", "", "", "ERROR", "XTR-4500L devolvió items vacío", raw
+                            String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
+                            "El GPS Tracker (XTR-4500L) no pudo localizar el bolsín.",
+                            raw
                     };
                     continue;
                 }
@@ -84,23 +88,10 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
             } catch (Exception ex) {
                 ubicacionAdaptada[i] = new String[]{
                         String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
-                        "Error al adaptar JSON de XTR-4500L: " + ex.getMessage(), raw
+                        "El GPS Tracker (XTR-4500L) no pudo localizar el bolsín.",
+                        raw
                 };
             }
         }
-    }
-
-    private String extraerMensajeError(String body) {
-        if (body == null || body.isBlank()) {
-            return "El GPS Tracker no pudo informar ubicación del bolsín.";
-        }
-        try {
-            JsonNode node = objectMapper.readTree(body);
-            if (node.has("mensaje")) {
-                return node.get("mensaje").asText();
-            }
-        } catch (Exception ignored) {
-        }
-        return body;
     }
 }

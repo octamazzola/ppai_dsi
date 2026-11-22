@@ -18,7 +18,7 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
     private final ObjectMapper objectMapper;
 
     public AdaptadorGPSTrackerGeoPulseMTR900(String apiKey, int[] nroBolsines,
-                                            ServicioGPSTrackerGeoPulseMTR900 servicio, ObjectMapper objectMapper) {
+            ServicioGPSTrackerGeoPulseMTR900 servicio, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.nroBolsines = nroBolsines;
         this.servicio = servicio;
@@ -41,9 +41,9 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
                 ubicacionRecibida[i] = servicio.fetchCargoPositions(apiKey, nroBolsines[i]);
             } catch (RestClientResponseException ex) {
                 ubicacionRecibida[i] = ERROR_PREFIX + "HTTP " + ex.getStatusCode().value()
-                        + " desde GeoPulse MTR-900: " + extraerMensajeError(ex.getResponseBodyAsString());
+                        + ": " + ex.getResponseBodyAsString();
             } catch (RestClientException ex) {
-                ubicacionRecibida[i] = ERROR_PREFIX + "No se pudo conectar con GeoPulse MTR-900 (" + ex.getMessage() + ")";
+                ubicacionRecibida[i] = ERROR_PREFIX + "Sin conexión con el servicio GeoPulse MTR-900";
             }
         }
     }
@@ -53,9 +53,11 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
         for (int i = 0; i < nroBolsines.length; i++) {
             String raw = ubicacionRecibida[i];
             if (raw == null || raw.startsWith(ERROR_PREFIX)) {
-                String msg = raw == null ? "Sin respuesta de GeoPulse MTR-900" : raw.substring(ERROR_PREFIX.length());
+                String detalleCrudo = raw == null ? "Sin respuesta de GeoPulse MTR-900" : raw.substring(ERROR_PREFIX.length());
                 ubicacionAdaptada[i] = new String[]{
-                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR", msg, raw == null ? "" : raw
+                        String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
+                        "El GPS Tracker (GeoPulse MTR-900) no pudo localizar el bolsín.",
+                        detalleCrudo
                 };
                 continue;
             }
@@ -65,7 +67,8 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
                 if (!matrix.isArray() || matrix.isEmpty() || !matrix.get(0).isArray() || matrix.get(0).size() < 4) {
                     ubicacionAdaptada[i] = new String[]{
                             String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
-                            "Formato de matriz inesperado de GeoPulse MTR-900", raw
+                            "El GPS Tracker (GeoPulse MTR-900) no pudo localizar el bolsín.",
+                            raw
                     };
                     continue;
                 }
@@ -82,23 +85,10 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
             } catch (Exception ex) {
                 ubicacionAdaptada[i] = new String[]{
                         String.valueOf(nroBolsines[i]), "", "", "", "ERROR",
-                        "Error al adaptar matriz de GeoPulse MTR-900: " + ex.getMessage(), raw
+                        "El GPS Tracker (GeoPulse MTR-900) no pudo localizar el bolsín.",
+                        raw
                 };
             }
         }
-    }
-
-    private String extraerMensajeError(String body) {
-        if (body == null || body.isBlank()) {
-            return "El GPS Tracker no pudo informar ubicación del bolsín.";
-        }
-        try {
-            JsonNode node = objectMapper.readTree(body);
-            if (node.has("mensaje")) {
-                return node.get("mensaje").asText();
-            }
-        } catch (Exception ignored) {
-        }
-        return body;
     }
 }

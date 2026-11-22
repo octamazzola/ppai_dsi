@@ -8,7 +8,6 @@ El proyecto implementa de punta a punta el **Caso de Uso N° 36: Consultar segui
 
 ## Tabla de contenidos
 
-- [Integrantes](#integrantes)
 - [Arquitectura General](#arquitectura-general)
 - [Patrones y Decisiones de Diseño](#patrones-y-decisiones-de-diseño)
 - [Estructura del Repositorio](#estructura-del-repositorio)
@@ -18,22 +17,6 @@ El proyecto implementa de punta a punta el **Caso de Uso N° 36: Consultar segui
 - [Endpoints REST del Backend](#endpoints-rest-del-backend)
 - [Guía de Pruebas: Flujo Básico y Flujos Alternativos (A1–A5)](#guía-de-pruebas-flujo-básico-y-flujos-alternativos-a1a5)
 - [Ejecutar Tests Automatizados](#ejecutar-tests-automatizados)
-- [Referencias de la Cátedra](#referencias-de-la-cátedra)
-
----
-
-## Integrantes
-
-**Curso 3K3 — Grupo 9 + 11 (Ciclo lectivo 2026)**
-
-- Adami, María Constanza
-- Andrade, Francisco Ezequiel
-- Bruno, Rocío María Giuliana
-- Ibañez, Lautaro
-- Mazzola, Octavio
-- Medina, Alejandro Ezequiel
-- Sanchez, Joaquin
-- Villalba, Alex Martin
 
 ---
 
@@ -207,6 +190,20 @@ Los códigos de Comisiones Médicas y números de bolsín están **sincronizados
 - `eb_mdz` (`CM-MDZ-03`): Flujo limpio (`103`) en los 3 modelos GPS.
 - `eb_juj` (`CM-JUJ-01`): Sin bolsines enviados → prueba directa de **Flujo Alternativo A1**.
 
+### Cómo agregar o quitar datos precargados (`data.sql`)
+
+Todos los datos iniciales se cargan automáticamente al iniciar el backend desde `backend/src/main/resources/data.sql` (al usar `spring.jpa.hibernate.ddl-auto=create-drop`, cada reinicio recrea las tablas en H2 y vuelve a ejecutar el script).
+
+- **Orden de dependencias (claves foráneas)** a respetar:  
+  `provincia` → `localidad` → `comision_medica` → `rol` → `usuario` → `empleado` → `sesion` → `estado` → `bolsin` → `cambio_estado_bolsin`.
+- **Para agregar un bolsín nuevo**:
+  1. Agregar un `INSERT INTO bolsin (...)` con un `numero_bolsin` único y códigos de `cm_origen_codigo` / `cm_destino_codigo` existentes en `comision_medica`.
+  2. Agregar al menos un `INSERT INTO cambio_estado_bolsin (...)` con `fecha_hora_fin = NULL` y `estado_id = 3` (`Enviado`) para que sea considerado su estado actual.
+  3. *(Opcional)* Para que el GPS Tracker devuelva coordenadas válidas (y no dispare A3), el `numero_bolsin` y los códigos de CM deben existir también en `gps-tracker-api/src/main/java/ar/edu/dsi/gpstracker/repository/InMemoryBolsinRepository.java`.
+- **Para quitar un bolsín o empleado**:
+  - Eliminar primero las filas hijas que lo referencian (por ejemplo, sus `INSERT INTO cambio_estado_bolsin` antes de borrar el `INSERT INTO bolsin`) para evitar errores de integridad referencial al levantar H2.
+- **Aplicar cambios**: guardar `data.sql` y reiniciar el backend (`Ctrl + C` y `mvn spring-boot:run`). *(Si se modifican los datos de prueba por defecto, revisar las aserciones de `BolsinesCu36Tests.java`).*
+
 ---
 
 ## Endpoints REST del Backend
@@ -256,11 +253,4 @@ mvn test
 Los tests en `BolsinesCu36Tests` verifican:
 - Carga del contexto Spring Boot + esquema JPA en H2 + `data.sql`.
 - Filtrado por Patrón Experto (`esTuCMOrigen`, `sosEnviado`, `sosActual`, `esAmbitoBolsin`, `esTuCM`, `sosGCM`, búsqueda del GCM destino).
-- Normalización uniforme de los 3 adaptadores (`AdaptadorGPSTrackerXTR4500L`, `AdaptadorGPSTrackerNavTrackQX7A`, `AdaptadorGPSTrackerGeoPulseMTR900`).
-
----
-
-## Referencias de la Cátedra
-
-- **API oficial de GPS Tracker (DSI UTN-FRC 2026)**: [LiberaeMentis/dsi-api-bolsines](https://github.com/LiberaeMentis/dsi-api-bolsines)
-- **Repositorio de referencia de implementaciones de Casos de Uso (DSI UTN-FRC 2026)**: [LiberaeMentis/dsi-implementaciones-uc](https://github.com/LiberaeMentis/dsi-implementaciones-uc)
+- Normalización uniforme de los 3 adaptadores (`AdaptadorGPSTrackerXTR4500L`, `AdaptadorGPSTrackerNavTrackQX7A`, `AdaptadorGPSTrackerGeoPulseMTR900`) y traducción de errores externos al mensaje de dominio A3.

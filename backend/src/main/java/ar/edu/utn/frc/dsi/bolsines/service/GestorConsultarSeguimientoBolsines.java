@@ -33,7 +33,8 @@ public class GestorConsultarSeguimientoBolsines {
     private final IGoogleMaps iGoogleMaps;
     private final GestorNotificarUbicacionBolsin gestorNotificarUbicacionBolsin;
 
-    // Estado interno del Caso de Uso en curso (mismo enfoque que GestorLaboreos del ejemplo de catedra)
+    // Estado interno del Caso de Uso en curso (mismo enfoque que GestorLaboreos del
+    // ejemplo de catedra)
     private Empleado empleadoLogueado;
     private ComisionMedica cmEmpleadoLogueado;
     private List<Bolsin> bolsinesEnviados = new ArrayList<>();
@@ -47,11 +48,11 @@ public class GestorConsultarSeguimientoBolsines {
     private String modeloGPSSeleccionado = InterfazGPSTracker.MODELO_XTR;
 
     public GestorConsultarSeguimientoBolsines(ISesionRepository sesionRepository,
-                                              IEmpleadoRepository empleadoRepository,
-                                              IBolsinRepository bolsinRepository,
-                                              InterfazGPSTracker interfazGPSTracker,
-                                              IGoogleMaps iGoogleMaps,
-                                              GestorNotificarUbicacionBolsin gestorNotificarUbicacionBolsin) {
+            IEmpleadoRepository empleadoRepository,
+            IBolsinRepository bolsinRepository,
+            InterfazGPSTracker interfazGPSTracker,
+            IGoogleMaps iGoogleMaps,
+            GestorNotificarUbicacionBolsin gestorNotificarUbicacionBolsin) {
         this.sesionRepository = sesionRepository;
         this.empleadoRepository = empleadoRepository;
         this.bolsinRepository = bolsinRepository;
@@ -78,8 +79,7 @@ public class GestorConsultarSeguimientoBolsines {
                         e.getNombreCompleto(),
                         codCm,
                         e.mostrarCM(),
-                        desc
-                ));
+                        desc));
             }
         }
         return resultado;
@@ -91,7 +91,8 @@ public class GestorConsultarSeguimientoBolsines {
         this.bolsinSeleccionado = null;
         this.bolsinSeleccionadoDto = null;
 
-        // 1. Buscar empleado logueado desde la Sesion actual (o usuario demo seleccionado)
+        // 1. Buscar empleado logueado desde la Sesion actual (o usuario demo
+        // seleccionado)
         this.empleadoLogueado = buscarEmpleadoLogueado(nombreUsuarioDemo);
         if (this.empleadoLogueado == null) {
             throw new IllegalStateException("No se encontró un empleado asociado a la sesión actual.");
@@ -101,7 +102,8 @@ public class GestorConsultarSeguimientoBolsines {
         this.cmEmpleadoLogueado = buscarCMEmpleadoLogueado();
         this.codCMOrigen = this.cmEmpleadoLogueado.getCodigo();
 
-        // 3. Buscar bolsines en estado Enviado cuya CM origen == CM del usuario logueado
+        // 3. Buscar bolsines en estado Enviado cuya CM origen == CM del usuario
+        // logueado
         this.bolsinesEnviados = buscarBolsinesEnviadosEnCM();
 
         // Flujo Alternativo A1: No se encuentran bolsines en estado enviado
@@ -119,8 +121,7 @@ public class GestorConsultarSeguimientoBolsines {
                     "A1: No se encuentran bolsines en estado Enviado para " + cmEmpleadoLogueado.getNombre() + ".",
                     List.of(),
                     List.of(),
-                    mapaVacio
-            );
+                    mapaVacio);
         }
 
         // 4. Buscar datos de bolsines (nroBolsin, nroPrecinto, CM destino)
@@ -146,9 +147,10 @@ public class GestorConsultarSeguimientoBolsines {
         String flujoAlt = algunErrorGPS ? "A3" : null;
         String mensaje = algunErrorGPS
                 ? "Se encontraron " + bolsinesConUbicacion.size()
-                + " bolsines enviados. Atención (A3): el GPS Tracker no pudo informar ubicación de uno o más bolsines."
+                        + " bolsines enviados. Atención (A3): el GPS Tracker no pudo informar ubicación de uno o más bolsines."
                 : "Se encontraron " + bolsinesConUbicacion.size()
-                + " bolsín(es) en estado Enviado con ubicación obtenida mediante " + modeloGPSSeleccionado + ".";
+                        + " bolsín(es) en estado Enviado con ubicación obtenida mediante " + modeloGPSSeleccionado
+                        + ".";
 
         return new IniciarConsultaResponse(
                 empleadoLogueado.getNombreCompleto(),
@@ -162,8 +164,7 @@ public class GestorConsultarSeguimientoBolsines {
                 mensaje,
                 destinosDisponibles,
                 this.bolsinesConUbicacion,
-                mapa
-        );
+                mapa);
     }
 
     // Paso 6 (filtros por numero de precinto o CM destino) + Flujo Alternativo A2
@@ -222,8 +223,7 @@ public class GestorConsultarSeguimientoBolsines {
                 mensaje,
                 destinosDisponibles,
                 dtosFiltrados,
-                mapaFiltrado
-        );
+                mapaFiltrado);
     }
 
     // Pasos 7 y 8 del CU 36
@@ -235,22 +235,25 @@ public class GestorConsultarSeguimientoBolsines {
         this.bolsinSeleccionado = this.bolsinesEnviados.stream()
                 .filter(b -> Objects.equals(b.getNumeroBolsin(), numeroBolsin))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No existe el bolsín #" + numeroBolsin + " en la consulta actual."));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No existe el bolsín #" + numeroBolsin + " en la consulta actual."));
 
         this.bolsinSeleccionadoDto = this.bolsinesConUbicacion.stream()
                 .filter(dto -> Objects.equals(dto.getNumeroBolsin(), numeroBolsin))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Sin datos de ubicación para el bolsín #" + numeroBolsin));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Sin datos de ubicación para el bolsín #" + numeroBolsin));
 
-        // Si el bolsin seleccionado no tiene ubicacion GPS disponible -> Flujo Alternativo A3
+        // Si el bolsin seleccionado no tiene ubicacion GPS disponible -> Flujo
+        // Alternativo A3
         if (!bolsinSeleccionadoDto.isUbicacionDisponible()) {
             return new SeleccionBolsinResponse(
                     bolsinSeleccionadoDto,
-                    "A3: El GPS Tracker no pudo informar ubicación del bolsín #" + numeroBolsin
-                            + " (" + bolsinSeleccionadoDto.getMensajeErrorGPS() + "). No se puede notificar ubicación.",
+                    "A3: El GPS Tracker (" + modeloGPSSeleccionado
+                            + ") no pudo localizar ni informar la ubicación del bolsín #"
+                            + numeroBolsin + ". No es posible notificar su ubicación.",
                     false,
-                    "A3"
-            );
+                    "A3");
         }
 
         ComisionMedica destino = bolsinSeleccionado.obtenerCMDestino();
@@ -262,8 +265,7 @@ public class GestorConsultarSeguimientoBolsines {
                 bolsinSeleccionadoDto,
                 pregunta,
                 true,
-                null
-        );
+                null);
     }
 
     // Pasos 9, 10 y 11 del CU 36 + Flujo Alternativo A5
@@ -272,7 +274,8 @@ public class GestorConsultarSeguimientoBolsines {
             throw new IllegalStateException("Debe seleccionar un bolsín antes de confirmar el envío de correo.");
         }
 
-        // Flujo Alternativo A5: El EB no selecciona la opcion para enviar un correo electronico
+        // Flujo Alternativo A5: El EB no selecciona la opcion para enviar un correo
+        // electronico
         if (!confirmar) {
             Integer nro = bolsinSeleccionado.getNumeroBolsin();
             finCU();
@@ -282,8 +285,7 @@ public class GestorConsultarSeguimientoBolsines {
                     "A5",
                     "A5: El Encargado de Bolsines decidió no enviar correo electrónico para el Bolsín #" + nro
                             + ". Fin del caso de uso.",
-                    null, null, null, nro, null, null, null, null, null, null
-            );
+                    null, null, null, nro, null, null, null, null, null, null);
         }
 
         if (!this.bolsinSeleccionadoDto.isUbicacionDisponible()) {
@@ -294,7 +296,8 @@ public class GestorConsultarSeguimientoBolsines {
         ComisionMedica cmDestino = this.bolsinSeleccionado.obtenerCMDestino();
         Empleado gerenteDestino = buscarGCM(cmDestino);
         if (gerenteDestino == null) {
-            throw new IllegalStateException("No se encontró un Gerente de Comisión Médica (GCM) para " + cmDestino.getNombre());
+            throw new IllegalStateException(
+                    "No se encontró un Gerente de Comisión Médica (GCM) para " + cmDestino.getNombre());
         }
 
         String emailGCM = buscarEmailGCM(gerenteDestino);
@@ -310,8 +313,7 @@ public class GestorConsultarSeguimientoBolsines {
                 bolsinSeleccionadoDto.getLatitud(),
                 bolsinSeleccionadoDto.getLongitud(),
                 bolsinSeleccionadoDto.getFechaHoraUltimaActualizacion(),
-                modeloGPSSeleccionado
-        );
+                modeloGPSSeleccionado);
 
         finCU();
         return resultado;
@@ -325,11 +327,11 @@ public class GestorConsultarSeguimientoBolsines {
                 true,
                 "A4",
                 "A4: El Encargado de Bolsines canceló la ejecución del caso de uso.",
-                null, null, null, null, null, null, null, null, null, null
-        );
+                null, null, null, null, null, null, null, null, null, null);
     }
 
-    // ==================== Metodos internos fieles al Diagrama de Secuencia ====================
+    // ==================== Metodos internos fieles al Diagrama de Secuencia
+    // ====================
 
     private Empleado buscarEmpleadoLogueado(String nombreUsuarioDemo) {
         List<Empleado> empleados = empleadoRepository.findAll();
@@ -385,8 +387,7 @@ public class GestorConsultarSeguimientoBolsines {
                 this.nroBolsines,
                 this.codCMOrigen,
                 this.codCMDestinos,
-                this.modeloGPSSeleccionado
-        );
+                this.modeloGPSSeleccionado);
     }
 
     private MapaPosicionesResponse buscarMapa(List<BolsinUbicacionResponse> marcadores) {
@@ -437,8 +438,7 @@ public class GestorConsultarSeguimientoBolsines {
                     errorMsg,
                     modeloGPSSeleccionado,
                     raw,
-                    mapsUrl
-            ));
+                    mapsUrl));
         }
         return lista;
     }

@@ -110,4 +110,21 @@ class BolsinesCu36Tests {
             assertEquals("OK", res[0][4]);
         }
     }
+
+    @Test
+    void adaptadorTraduceErrorExternoAMensajeDeDominioA3() {
+        ServicioGPSTrackerXTR4500L stub404 = new ServicioGPSTrackerXTR4500L() {
+            @Override
+            public String getBolsinLocation(String apiKey, int nroBolsin, String codCMOrigen) {
+                throw new org.springframework.web.client.RestClientException("404 Bolsin no encontrado");
+            }
+        };
+
+        String[][] res = new AdaptadorGPSTrackerXTR4500L("k1", new int[]{999}, "CM-CBA-01", stub404, objectMapper)
+                .recibirUbicacionBolsin();
+
+        assertEquals("999", res[0][0]);
+        assertEquals("ERROR", res[0][4]);
+        assertEquals("El GPS Tracker (XTR-4500L) no pudo localizar el bolsín.", res[0][5]);
+    }
 }

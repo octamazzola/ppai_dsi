@@ -340,7 +340,7 @@ export default function App() {
                                 )}
                               </>
                             ) : (
-                              <span className="badge-error">Sin ubicación (A3): {b.mensajeErrorGPS}</span>
+                              <span className="badge-error">A3: {b.mensajeErrorGPS}</span>
                             )}
                           </td>
                           <td>{b.ubicacionDisponible ? b.fechaHoraUltimaActualizacion : '—'}</td>
