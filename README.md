@@ -28,7 +28,7 @@ El sistema está organizado en **3 aplicaciones independientes** que corren en p
 | :--- | :--- | :---: | :--- |
 | `gps-tracker-api/` | Java 17 + Spring Boot 3.3.5 | `8080` | **API oficial de la cátedra** ([LiberaeMentis/dsi-api-bolsines](https://github.com/LiberaeMentis/dsi-api-bolsines)) que simula los 3 modelos de GPS Tracker con endpoints, `X-API-Key` y formatos de respuesta incompatibles. |
 | `backend/` | Java 17 + Spring Boot 3.3.5 + Spring Data JPA + H2 | `8081` | **Backend del CU 36**: capa Boundary (`@RestController`), Control (`@Service`), Entidades JPA con Patrón Experto, Patrón Adapter de salida contra `localhost:8080`, `IGoogleMaps` simulado e inclusión del CU 31. |
-| `frontend/` | React 19 + Vite 6 | `5173` | **Frontend mínimo funcional** (sin diseño UX en esta primera instancia) para probar el flujo completo del CU 36, cambiar entre los 3 proveedores GPS y ejecutar todos los flujos alternativos. |
+| `frontend/` | React 19 + Vite 6 + Leaflet | `5173` | **Frontend sencillo y funcional** con mapa interactivo (Leaflet/OpenStreetMap) para seleccionar bolsines desde el mapa, cambiar entre los 3 proveedores GPS y ejecutar todos los flujos alternativos. |
 
 ```text
 [Frontend React :5173]
@@ -39,7 +39,7 @@ El sistema está organizado en **3 aplicaciones independientes** que corren en p
    ├── GestorConsultarSeguimientoBolsines   (@Service <<control>>)
    ├── Modelo de Dominio                    (<<entity>> con Patrón Experto)
    ├── IGoogleMaps ──► ServidorGoogleMaps   (<<boundary>> simulado)
-   ├── GestorNotificarUbicacionBolsin       (<<include>> CU 31 simulado)
+   ├── <<include>> CU 31                    (fuera de alcance: informa ejecución exitosa)
    └── InterfazGPSTracker ──► IAdaptadorGPSTracker (Patrón Adapter)
            ├── AdaptadorGPSTrackerXTR4500L     ──► ServicioGPSTrackerXTR4500L     ──► :8080/api/xtr-4500l/getBolsinLocation
            ├── AdaptadorGPSTrackerNavTrackQX7A ──► ServicioGPSTrackerNavTrackQX7A ──► :8080/api/navtrack-qx-7a/retrieveTrackingData
@@ -103,7 +103,7 @@ Todos implementan `IAdaptadorGPSTracker` (`recibirUbicacionBolsin()`, `solicitar
 │       │       ├── BolsinesApplication.java
 │       │       ├── config/           # CorsConfig, GpsApiConfig
 │       │       ├── controller/       # PantallaConsultarSeguimientoBolsines
-│       │       ├── service/          # GestorConsultarSeguimientoBolsines, GestorNotificarUbicacionBolsin (CU 31)
+│       │       ├── service/          # GestorConsultarSeguimientoBolsines
 │       │       ├── boundary/         # InterfazGPSTracker, IGoogleMaps
 │       │       ├── adapter/          # IAdaptadorGPSTracker + 3 adaptadores concretos
 │       │       ├── external/         # 3 clientes RestClient GPS + ServidorGoogleMaps
@@ -112,12 +112,13 @@ Todos implementan `IAdaptadorGPSTracker` (`recibirUbicacionBolsin()`, `solicitar
 │       │       └── dto/              # Request / Response DTOs
 │       └── test/
 │           └── java/ar/edu/utn/frc/dsi/bolsines/BolsinesCu36Tests.java
-└── frontend/                         # Frontend mínimo React + Vite (puerto 5173)
+└── frontend/                         # Frontend React + Vite + Leaflet (puerto 5173)
     ├── package.json
     ├── vite.config.js
     └── src/
         ├── App.jsx
         ├── App.css
+        ├── components/MapaBolsines.jsx
         └── services/seguimientoService.js
 ```
 

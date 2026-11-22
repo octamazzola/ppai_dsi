@@ -17,8 +17,14 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
     private final ServicioGPSTrackerGeoPulseMTR900 servicio;
     private final ObjectMapper objectMapper;
 
+    // Constructor fiel al diagrama de diseño E2 (composicion con ServicioGPSTrackerGeoPulseMTR900)
+    public AdaptadorGPSTrackerGeoPulseMTR900(String apiKey, int[] nroBolsines) {
+        this(apiKey, nroBolsines, new ServicioGPSTrackerGeoPulseMTR900(), new ObjectMapper());
+    }
+
+    // Sobrecarga para tests unitarios con stubs
     public AdaptadorGPSTrackerGeoPulseMTR900(String apiKey, int[] nroBolsines,
-            ServicioGPSTrackerGeoPulseMTR900 servicio, ObjectMapper objectMapper) {
+                                            ServicioGPSTrackerGeoPulseMTR900 servicio, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.nroBolsines = nroBolsines;
         this.servicio = servicio;
@@ -62,7 +68,6 @@ public class AdaptadorGPSTrackerGeoPulseMTR900 implements IAdaptadorGPSTracker {
                 continue;
             }
             try {
-                // Formato oficial GeoPulse MTR-900 (matriz JSON): [[101,-31.4201,-64.1888,"2026-03-07T12:30:00"]]
                 JsonNode matrix = objectMapper.readTree(raw);
                 if (!matrix.isArray() || matrix.isEmpty() || !matrix.get(0).isArray() || matrix.get(0).size() < 4) {
                     ubicacionAdaptada[i] = new String[]{

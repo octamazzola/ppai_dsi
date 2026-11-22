@@ -18,6 +18,12 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
     private final ServicioGPSTrackerXTR4500L servicio;
     private final ObjectMapper objectMapper;
 
+    // Constructor fiel al diagrama de diseño E2 (composicion con ServicioGPSTrackerXTR4500L)
+    public AdaptadorGPSTrackerXTR4500L(String apiKey, int[] nroBolsines, String codCMOrigen) {
+        this(apiKey, nroBolsines, codCMOrigen, new ServicioGPSTrackerXTR4500L(), new ObjectMapper());
+    }
+
+    // Sobrecarga para tests unitarios con stubs
     public AdaptadorGPSTrackerXTR4500L(String apiKey, int[] nroBolsines, String codCMOrigen,
                                        ServicioGPSTrackerXTR4500L servicio, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
@@ -64,7 +70,6 @@ public class AdaptadorGPSTrackerXTR4500L implements IAdaptadorGPSTracker {
                 continue;
             }
             try {
-                // Formato oficial XTR-4500L: {"items":[{"numeroBolsin":101,"latitud":-31.4201,"longitud":-64.1888,"fechaHoraUltimaActualizacion":"2026-03-07T12:30:00"}]}
                 JsonNode root = objectMapper.readTree(raw);
                 JsonNode items = root.path("items");
                 if (!items.isArray() || items.isEmpty()) {

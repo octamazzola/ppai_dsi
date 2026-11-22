@@ -31,7 +31,6 @@ public class GestorConsultarSeguimientoBolsines {
     private final IBolsinRepository bolsinRepository;
     private final InterfazGPSTracker interfazGPSTracker;
     private final IGoogleMaps iGoogleMaps;
-    private final GestorNotificarUbicacionBolsin gestorNotificarUbicacionBolsin;
 
     // Estado interno del Caso de Uso en curso (mismo enfoque que GestorLaboreos del
     // ejemplo de catedra)
@@ -51,14 +50,12 @@ public class GestorConsultarSeguimientoBolsines {
             IEmpleadoRepository empleadoRepository,
             IBolsinRepository bolsinRepository,
             InterfazGPSTracker interfazGPSTracker,
-            IGoogleMaps iGoogleMaps,
-            GestorNotificarUbicacionBolsin gestorNotificarUbicacionBolsin) {
+            IGoogleMaps iGoogleMaps) {
         this.sesionRepository = sesionRepository;
         this.empleadoRepository = empleadoRepository;
         this.bolsinRepository = bolsinRepository;
         this.interfazGPSTracker = interfazGPSTracker;
         this.iGoogleMaps = iGoogleMaps;
-        this.gestorNotificarUbicacionBolsin = gestorNotificarUbicacionBolsin;
     }
 
     public List<SesionDisponibleResponse> listarSesionesDemo() {
@@ -104,7 +101,7 @@ public class GestorConsultarSeguimientoBolsines {
 
         // 3. Buscar bolsines en estado Enviado cuya CM origen == CM del usuario
         // logueado
-        this.bolsinesEnviados = buscarBolsinesEnviadosEnCM();
+        buscarBolsinesEnviados();
 
         // Flujo Alternativo A1: No se encuentran bolsines en estado enviado
         if (this.bolsinesEnviados.isEmpty()) {
@@ -133,8 +130,8 @@ public class GestorConsultarSeguimientoBolsines {
         // Construir DTOs combinando datos de dominio + ubicacion adaptada
         this.bolsinesConUbicacion = construirBolsinesConUbicacion();
 
-        // 6. Buscar mapa via IGoogleMaps (Opcion B)
-        MapaPosicionesResponse mapa = buscarMapa(this.bolsinesConUbicacion);
+        // 6. Mostrar ubicacion en mapa via IGoogleMaps (Opcion B / E2)
+        MapaPosicionesResponse mapa = mostrarUbicacionEnMapa();
 
         boolean algunErrorGPS = this.bolsinesConUbicacion.stream().anyMatch(b -> !b.isUbicacionDisponible());
         List<String> destinosDisponibles = this.bolsinesConUbicacion.stream()
@@ -285,7 +282,7 @@ public class GestorConsultarSeguimientoBolsines {
                     "A5",
                     "A5: El Encargado de Bolsines decidió no enviar correo electrónico para el Bolsín #" + nro
                             + ". Fin del caso de uso.",
-                    null, null, null, nro, null, null, null, null, null, null);
+                    null, null, null, nro, null, null, null);
         }
 
         if (!this.bolsinSeleccionadoDto.isUbicacionDisponible()) {
@@ -302,18 +299,19 @@ public class GestorConsultarSeguimientoBolsines {
 
         String emailGCM = buscarEmailGCM(gerenteDestino);
 
-        // Paso 11: <<include>> Caso de Uso 31 - Notificar ubicacion de bolsin
-        NotificacionResultadoResponse resultado = gestorNotificarUbicacionBolsin.notificarUbicacion(
-                bolsinSeleccionado.getNumeroBolsin(),
-                bolsinSeleccionado.getNroPrecinto(),
-                bolsinSeleccionado.getOrigen().getNombre(),
-                cmDestino.getNombre(),
+        // Paso 11: <<include>> Caso de Uso 31 (fuera del alcance del CU 36; se informa ejecucion exitosa)
+        NotificacionResultadoResponse resultado = new NotificacionResultadoResponse(
+                true,
+                true,
+                null,
+                "Ejecución exitosa del Caso de Uso 31: correo enviado exitosamente a " + emailGCM + ".",
                 gerenteDestino.getNombreCompleto(),
                 emailGCM,
+                cmDestino.getNombre(),
+                bolsinSeleccionado.getNumeroBolsin(),
                 bolsinSeleccionadoDto.getLatitud(),
                 bolsinSeleccionadoDto.getLongitud(),
-                bolsinSeleccionadoDto.getFechaHoraUltimaActualizacion(),
-                modeloGPSSeleccionado);
+                bolsinSeleccionadoDto.getFechaHoraUltimaActualizacion());
 
         finCU();
         return resultado;
@@ -327,7 +325,7 @@ public class GestorConsultarSeguimientoBolsines {
                 true,
                 "A4",
                 "A4: El Encargado de Bolsines canceló la ejecución del caso de uso.",
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     // ==================== Metodos internos fieles al Diagrama de Secuencia
@@ -364,11 +362,16 @@ public class GestorConsultarSeguimientoBolsines {
         return this.empleadoLogueado.getCM();
     }
 
-    private List<Bolsin> buscarBolsinesEnviadosEnCM() {
-        return bolsinRepository.findAll().stream()
+    // Metodos publicos consistentes con el diagrama de clases y secuencia de E2
+    public void buscarBolsinesEnviados() {
+        this.bolsinesEnviados = bolsinRepository.findAll().stream()
                 .filter(b -> b.esTuCMOrigen(this.cmEmpleadoLogueado))
                 .filter(Bolsin::sosEnviado)
                 .toList();
+    }
+
+    public MapaPosicionesResponse mostrarUbicacionEnMapa() {
+        return buscarMapa(this.bolsinesConUbicacion);
     }
 
     private void buscarDatosBolsines() {

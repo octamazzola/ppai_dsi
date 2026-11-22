@@ -13,9 +13,6 @@ public class NotificacionResultadoResponse {
     private Double latitud;
     private Double longitud;
     private String fechaHoraUltimaActualizacion;
-    private String asuntoCorreo;
-    private String cuerpoCorreo;
-    private String fechaHoraEnvio;
 
     public NotificacionResultadoResponse() {
     }
@@ -25,9 +22,7 @@ public class NotificacionResultadoResponse {
                                          String destinatarioNombre, String destinatarioEmail,
                                          String comisionMedicaDestino, Integer numeroBolsin,
                                          Double latitud, Double longitud,
-                                         String fechaHoraUltimaActualizacion,
-                                         String asuntoCorreo, String cuerpoCorreo,
-                                         String fechaHoraEnvio) {
+                                         String fechaHoraUltimaActualizacion) {
         this.correoEnviado = correoEnviado;
         this.casoDeUsoFinalizado = casoDeUsoFinalizado;
         this.flujoAlternativo = flujoAlternativo;
@@ -39,9 +34,6 @@ public class NotificacionResultadoResponse {
         this.latitud = latitud;
         this.longitud = longitud;
         this.fechaHoraUltimaActualizacion = fechaHoraUltimaActualizacion;
-        this.asuntoCorreo = asuntoCorreo;
-        this.cuerpoCorreo = cuerpoCorreo;
-        this.fechaHoraEnvio = fechaHoraEnvio;
     }
 
     public boolean isCorreoEnviado() { return correoEnviado; }
@@ -55,7 +47,4 @@ public class NotificacionResultadoResponse {
     public Double getLatitud() { return latitud; }
     public Double getLongitud() { return longitud; }
     public String getFechaHoraUltimaActualizacion() { return fechaHoraUltimaActualizacion; }
-    public String getAsuntoCorreo() { return asuntoCorreo; }
-    public String getCuerpoCorreo() { return cuerpoCorreo; }
-    public String getFechaHoraEnvio() { return fechaHoraEnvio; }
 }

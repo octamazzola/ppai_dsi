@@ -17,8 +17,14 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
     private final ServicioGPSTrackerNavTrackQX7A servicio;
     private final ObjectMapper objectMapper;
 
+    // Constructor fiel al diagrama de diseño E2 actualizado (composicion con ServicioGPSTrackerNavTrackQX7A)
+    public AdaptadorGPSTrackerNavTrackQX7A(String apiKey, int[] nroBolsines, String[] codCMDestinos) {
+        this(apiKey, nroBolsines, codCMDestinos, new ServicioGPSTrackerNavTrackQX7A(), new ObjectMapper());
+    }
+
+    // Sobrecarga para tests unitarios con stubs
     public AdaptadorGPSTrackerNavTrackQX7A(String apiKey, int[] nroBolsines, String[] codCMDestinos,
-            ServicioGPSTrackerNavTrackQX7A servicio, ObjectMapper objectMapper) {
+                                           ServicioGPSTrackerNavTrackQX7A servicio, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.nroBolsines = nroBolsines;
         this.codCMDestinos = codCMDestinos;
@@ -63,7 +69,6 @@ public class AdaptadorGPSTrackerNavTrackQX7A implements IAdaptadorGPSTracker {
                 };
                 continue;
             }
-            // Formato oficial NavTrack QX-7A (text/plain CSV): "101,-31.4201,-64.1888,2026-03-07T12:30"
             String[] partes = raw.trim().split(",");
             if (partes.length < 4) {
                 ubicacionAdaptada[i] = new String[]{

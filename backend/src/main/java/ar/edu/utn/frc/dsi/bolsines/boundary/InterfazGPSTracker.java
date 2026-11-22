@@ -5,10 +5,6 @@ import ar.edu.utn.frc.dsi.bolsines.adapter.AdaptadorGPSTrackerNavTrackQX7A;
 import ar.edu.utn.frc.dsi.bolsines.adapter.AdaptadorGPSTrackerXTR4500L;
 import ar.edu.utn.frc.dsi.bolsines.adapter.IAdaptadorGPSTracker;
 import ar.edu.utn.frc.dsi.bolsines.config.GpsApiConfig;
-import ar.edu.utn.frc.dsi.bolsines.external.ServicioGPSTrackerGeoPulseMTR900;
-import ar.edu.utn.frc.dsi.bolsines.external.ServicioGPSTrackerNavTrackQX7A;
-import ar.edu.utn.frc.dsi.bolsines.external.ServicioGPSTrackerXTR4500L;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,21 +20,8 @@ public class InterfazGPSTracker {
     private String codCMOrigen;
     private String[] codCMDestinos;
 
-    private final ServicioGPSTrackerXTR4500L servicioXtr;
-    private final ServicioGPSTrackerNavTrackQX7A servicioNavTrack;
-    private final ServicioGPSTrackerGeoPulseMTR900 servicioGeoPulse;
-    private final ObjectMapper objectMapper;
-
-    public InterfazGPSTracker(GpsApiConfig gpsApiConfig,
-                              ServicioGPSTrackerXTR4500L servicioXtr,
-                              ServicioGPSTrackerNavTrackQX7A servicioNavTrack,
-                              ServicioGPSTrackerGeoPulseMTR900 servicioGeoPulse,
-                              ObjectMapper objectMapper) {
+    public InterfazGPSTracker(GpsApiConfig gpsApiConfig) {
         this.apiKeyGPS = gpsApiConfig.getApiKeys();
-        this.servicioXtr = servicioXtr;
-        this.servicioNavTrack = servicioNavTrack;
-        this.servicioGeoPulse = servicioGeoPulse;
-        this.objectMapper = objectMapper;
     }
 
     // Firma ampliada acordada (soporta los 3 proveedores GPS via polimorfismo con IAdaptadorGPSTracker)
@@ -56,12 +39,12 @@ public class InterfazGPSTracker {
     private IAdaptadorGPSTracker crearAdaptador(String modeloGPS) {
         String modelo = (modeloGPS == null || modeloGPS.isBlank()) ? MODELO_XTR : modeloGPS.trim();
         if (MODELO_NAVTRACK.equalsIgnoreCase(modelo) || "NAVTRACK".equalsIgnoreCase(modelo)) {
-            return new AdaptadorGPSTrackerNavTrackQX7A(apiKeyGPS[1], nroBolsines, codCMDestinos, servicioNavTrack, objectMapper);
+            return new AdaptadorGPSTrackerNavTrackQX7A(apiKeyGPS[1], nroBolsines, codCMDestinos);
         }
         if (MODELO_GEOPULSE.equalsIgnoreCase(modelo) || "GEOPULSE".equalsIgnoreCase(modelo)) {
-            return new AdaptadorGPSTrackerGeoPulseMTR900(apiKeyGPS[2], nroBolsines, servicioGeoPulse, objectMapper);
+            return new AdaptadorGPSTrackerGeoPulseMTR900(apiKeyGPS[2], nroBolsines);
         }
-        return new AdaptadorGPSTrackerXTR4500L(apiKeyGPS[0], nroBolsines, codCMOrigen, servicioXtr, objectMapper);
+        return new AdaptadorGPSTrackerXTR4500L(apiKeyGPS[0], nroBolsines, codCMOrigen);
     }
 
     public String normalizarNombreModelo(String modeloGPS) {

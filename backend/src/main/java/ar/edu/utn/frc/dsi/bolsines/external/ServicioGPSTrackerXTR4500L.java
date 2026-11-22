@@ -1,23 +1,19 @@
 package ar.edu.utn.frc.dsi.bolsines.external;
 
 import ar.edu.utn.frc.dsi.bolsines.config.GpsApiConfig;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-@Component
 public class ServicioGPSTrackerXTR4500L {
 
     private final RestClient restClient;
 
-    protected ServicioGPSTrackerXTR4500L() {
-        this.restClient = null;
+    public ServicioGPSTrackerXTR4500L() {
+        this(GpsApiConfig.getConfiguredBaseUrl());
     }
 
-    @Autowired
-    public ServicioGPSTrackerXTR4500L(GpsApiConfig gpsApiConfig) {
+    public ServicioGPSTrackerXTR4500L(String baseUrl) {
         this.restClient = RestClient.builder()
-                .baseUrl(gpsApiConfig.getBaseUrl())
+                .baseUrl(baseUrl)
                 .build();
     }
 
